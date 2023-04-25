@@ -1,0 +1,30 @@
+# Node.js dependencies
+node_modules/
+
+# Log files
+*.log
+
+# Environment variables
+.env
+
+# Build artifacts
+build/
+dist/
+
+# IDE-specific files
+.vscode/
+.idea/
+
+# Compiled binary files
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Package lock files
+package-lock.json
+yarn.lock
+
+# Miscellaneous files
+Thumbs.db
+.DS_Store

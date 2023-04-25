@@ -1,0 +1,17 @@
+{
+  "name": "scrape_views",
+  "version": "1.0.0",
+  "description": "HTML Scraper for a local cannabis company",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "puppeteer": "^19.11.1",
+    "puppeteer-core": "^19.11.0"
+  }
+}
