@@ -15,10 +15,10 @@ const scraperObject = {
 
         var pages_data = {}; // Construct the main object for all course data
         pages_data['stores'] = []
-
+        const links = [];
 
         // Main Loop - through all pages
-        for (var page_index = 0; page_index < 407; page_index++){   
+        for (var page_index = 0; page_index < 144; page_index++){   
             // Click next page button after first loop iteration
             if (page_index >= 1){
                 await page.waitForSelector('button[ng-click="handlePagination(true)"]');
@@ -30,19 +30,24 @@ const scraperObject = {
             console.log(`loading page ${page_index + 1}`);
             await delay(1000); // Wait for page to fully load
             console.log(`page ${page_index + 1} loaded\n`);
+
+            // Extract links from table rows
+            const hrefs = await page.$$eval('td.ng-scope > a.btn-single', (links) => {
+                return links.map(link => link.href);
+            });
+            links.push(...hrefs);
         }
 
-        // var jsonData = JSON.stringify(pages_data, null, 4);
-        // // console.log(jsonData);
+        // Write links to JSON file
+        fs.writeFile('links.json', JSON.stringify(links), (err) => {
+            if (err) {
+                console.error(err);
+                return;
+            }
+            console.log('Links written to links.json');
+        });
 
-        // fs.writeFile("output.json", jsonData, 'utf8', function (err) {
-        // if (err) {
-        //     console.log("An error occured while writing JSON Object to File.");
-        //     return console.log(err);
-        // }
-
-        // console.log("JSON file has been saved.");
-        // })
+        //console.log('All links:', links);
 
         await browser.close()
     }
