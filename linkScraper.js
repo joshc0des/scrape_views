@@ -21,6 +21,11 @@ const scraperObject = {
             "stores": []
         }
 
+        // console.log(`Calculating the number of pages...`);
+        // await page.waitForSelector('button[ng-click="handlePagination(true)"]');
+
+
+
         // Main Loop - FIX # of PAGES with grabbing total from html and dividing by 20 (rounding up)
         for (var page_index = 0; page_index < 144; page_index++){ // for each page of 20 stores
             await page.bringToFront();
@@ -35,7 +40,7 @@ const scraperObject = {
             }
 
             console.log(`page ${page_index + 1} loaded\n`);
-
+            
             // Extract all rows from the table
             const rows = await page.$$eval('table.table > tbody > tr', (rowElements) => {
                 // Map through each row element to extract its information
@@ -68,9 +73,7 @@ const scraperObject = {
                 console.log(`Navigating to the info page for ${record.businessName}...`);
                 await extraLinksPage.goto(`${record.link}`);
     
-                await extraLinksPage.waitForFunction(
-                    'document.querySelector("body").innerText.includes("DBA")'
-                  );
+                await extraLinksPage.waitForFunction('document.querySelector("body").innerText.includes("DBA")');
                 const profileContainer = await extraLinksPage.$('.hd-box-container.profile');
                 const streetAddress = await getRowSpanValue(profileContainer, 'Street Address:');
                 const zipCode = await getRowSpanValue(profileContainer, 'ZIP Code:');
@@ -82,10 +85,8 @@ const scraperObject = {
                 record.phone = phone;
                 record.email = email;
                 record.hours = hours;
-                await delay(500);
 
                 console.log(record)
-                await delay(500);
 
                 data.stores.push(record);
                 data.total = data.stores.length;
