@@ -21,8 +21,8 @@ const scraperObject = {
             "stores": []
         }
 
-        // Main Loop
-        for (var page_index = 0; page_index < 1; page_index++){ // for each page of 20 stores
+        // Main Loop - FIX # of PAGES with grabbing total from html and dividing by 20 (rounding up)
+        for (var page_index = 0; page_index < 144; page_index++){ // for each page of 20 stores
             await page.bringToFront();
             console.log(`loading page ${page_index + 1}`); 
 
