@@ -2,7 +2,7 @@
 node_modules/
 
 # Output
-links.json
+output.json
 
 # Log files
 *.log
