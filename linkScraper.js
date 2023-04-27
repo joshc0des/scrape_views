@@ -6,13 +6,34 @@ const scraperObject = {
         let page = await browser.newPage();
         let extraLinksPage = await browser.newPage();
         console.log(`Navigating to ${this.url}...`);
-        // Navigate to the selected page
+
         await page.goto(this.url);
 
+        // this function is a simple delay - mostly used in debugging
         function delay(time) {
             return new Promise(function(resolve) {
                 setTimeout(resolve, time)
             });
+        }
+
+        // calculates the total amount of pages needed to loop through to get all stores
+        async function getTotalPages() {
+            const selector = 'span[ng-if="resultCount > 20"]';
+            const elementHandle = await page.$(selector);
+            if (elementHandle) {
+              const textContent = await (await elementHandle.getProperty('textContent')).jsonValue();
+              const match = textContent.match(/of\s*(\d+)\s*for/); // grab the total number of stores
+                if (match) {
+                    const stores = parseInt(match[1]);
+                    const pages = Math.ceil(stores / 20);
+                    console.log(`\n${pages} total pages of stores ${stores} will be scraped...Starting\n`); // calculated total number of pages
+                    return { stores, pages };
+                } else {
+                    return { error: textContent };
+                }
+            } else {
+              return { error: 'NO HANDLE' };
+            }        
         }
 
         const outputFile = 'output.json';
@@ -21,17 +42,28 @@ const scraperObject = {
             "stores": []
         }
 
-        // console.log(`Calculating the number of pages...`);
-        // await page.waitForSelector('button[ng-click="handlePagination(true)"]');
+        await page.bringToFront();
+        console.log(`Calculating the number of pages...`);
+        await page.waitForSelector('button[ng-click="handlePagination(true)"]');
+        await page.waitForSelector('span[ng-if="resultCount > 20"]');
 
+        const pagesStoresCount = await getTotalPages();
+        if (pagesStoresCount.stores) {
+            console.log(`Stores value: ${pagesStoresCount.stores[1]}`);
+            console.log(`Total pages: ${pagesStoresCount.pages}`);
+        } else {
+            console.log(`Error: ${pagesStoresCount.error}`);
+        }
+        let storeCounter = 0;
+        const storesTotal = pagesStoresCount.stores; // num of stores scraped
+        const pagesTotal = pagesStoresCount.pages;
 
-
-        // Main Loop - FIX # of PAGES with grabbing total from html and dividing by 20 (rounding up)
-        for (var page_index = 0; page_index < 144; page_index++){ // for each page of 20 stores
+        // Main Loop
+        for (var page_index = 0; page_index < pagesTotal; page_index++){ // for each page of 20 stores
             await page.bringToFront();
             console.log(`loading page ${page_index + 1}`); 
 
-            // Click next page button onlyafter first loop iteration
+            // Click next page button only after first loop iteration
             if (page_index >= 1){
                 await page.waitForSelector('button[ng-click="handlePagination(true)"]');
                 await page.click('button[ng-click="handlePagination(true)"]');                            
@@ -86,11 +118,11 @@ const scraperObject = {
                 record.email = email;
                 record.hours = hours;
 
-                console.log(record)
-
                 data.stores.push(record);
                 data.total = data.stores.length;
                 fs.writeFileSync(outputFile, JSON.stringify(data));
+                storeCounter ++;
+                console.log(`Saved ${storeCounter} of ${storesTotal} stores.`)
             }   
 
             // Works for phone/email/hours NOT street/zip
@@ -113,7 +145,7 @@ const scraperObject = {
                   return value.trim();
                 }
                 return '';
-            }                                                            
+            }            
         }
 
         await browser.close()
