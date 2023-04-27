@@ -21,8 +21,15 @@ const scraperObject = {
 			header: ['licenseNumber', 'businessName', 'dba', 'licenseType', 'city', 'county', 'licenceExpiration', 'link', 'streetAddress', 'zipCode', 'phone', 'email', 'hours'],
 		});
 
-        // Main Data
-        for (var page_index = 0; page_index < 1; page_index++){   
+        let data = {
+            "total": 0,
+            "stores": []
+        }
+
+        // Main Loop
+        for (var page_index = 0; page_index < 1; page_index++){ // for each page of 20 stores
+            console.log(`loading page ${page_index + 1}`); 
+
             // Click next page button onlyafter first loop iteration
             if (page_index >= 1){
                 await page.waitForSelector('button[ng-click="handlePagination(true)"]');
@@ -31,61 +38,83 @@ const scraperObject = {
                 await page.waitForSelector('button[ng-click="handlePagination(true)"]');
             }
 
-            console.log(`loading page ${page_index + 1}`);
             console.log(`page ${page_index + 1} loaded\n`);
 
             // Extract all rows from the table
             const rows = await page.$$eval('table.table > tbody > tr', (rowElements) => {
                 // Map through each row element to extract its information
                 return rowElements.map(row => {
-                    const licenseNumber = row.querySelector('td:nth-child(1)').innerText.trim();
-                    const businessName = row.querySelector('td:nth-child(2)').innerText.trim();
-                    const dba = row.querySelector('td:nth-child(2)').innerText.trim();
-                    const licenseType = row.querySelector('td:nth-child(3)').innerText.trim();
-                    const city = row.querySelector('td:nth-child(4)').innerText.trim();
-                    const county = row.querySelector('td:nth-child(5)').innerText.trim();
-                    const licenceExpiration = row.querySelector('td:nth-child(6)').innerText.trim();
-                    const link = row.querySelector('td:nth-child(7) a').href;
-                    // Return an array with all the extracted data
-                    return [licenseNumber, businessName, dba, licenseType, city, county, licenceExpiration, link];
+                    const businessNameCell = row.querySelector('td:nth-child(2)');
+                    const businessName = businessNameCell.querySelector('strong').innerText.trim();
+                    const dba = businessNameCell.innerText.trim().replace(businessName, '').trim();
+                    return {
+                        licenseNumber: row.querySelector('td:nth-child(1)').innerText.trim(),
+                        businessName,
+                        dba,
+                        licenseType: row.querySelector('td:nth-child(3)').innerText.trim(),
+                        city: row.querySelector('td:nth-child(4)').innerText.trim(),
+                        county: row.querySelector('td:nth-child(5)').innerText.trim(),
+                        licenceExpiration: row.querySelector('td:nth-child(6)').innerText.trim(),
+                        link: row.querySelector('td:nth-child(7) a').href,
+                        streetAddress: "",
+                        zipCode: "",
+                        phone: "",
+                        email: "",
+                        hours: ""
+                      };
                 });
             });
 
+            // console.log(rows);
+
             console.log(`Grabbing additional info for page ${page_index + 1}`)
             // Push additional info to rows
-            for (const row of rows) {
-                //console.log(`Navigating to the info page for ${row[2]}...`);
-                await extraLinksPage.goto(`${row[7]}`);
+            for (const record of rows) {
+                console.log(`Navigating to the info page for ${record.businessName}...`);
+                await extraLinksPage.goto(`${record.link}`);
     
                 //console.log(`Loading additional data for ${rows[2]}...`);
-                await extraLinksPage.waitForXPath('/html/body/div[3]/div/div[2]/div[4]/div/div[2]/a[2]');
-                await delay(1000);
+                await extraLinksPage.waitForSelector('.hd-box-container.profile');
                 await extraLinksPage.waitForSelector('.col-md-8');
-                let values = [];
-                while (values.length !== 10) {
-                    values = [];
-                    values = await extraLinksPage.$$('.col-md-8'); // grabs all additional data
-                    // const textValues = [];
+                await delay(1000);
+                const profileContainer = await extraLinksPage.$('.hd-box-container.profile');
+                const streetAddress = await getRowSpanValue(profileContainer, 'Street Address:');
+                const zipCode = await getRowSpanValue(profileContainer, 'ZIP Code:');
+                const phone = await getRowValue(profileContainer, 'Telephone Number:');
+                const email = await getRowValue(profileContainer, 'E-mail:');
+                const hours = await getRowValue(profileContainer, 'Hours of Operation:');
+                record.streetAddress = streetAddress;
+                record.zipCode = zipCode;
+                record.phone = phone;
+                record.email = email;
+                record.hours = hours;
+                await delay(500);
 
-                    const textValues = await Promise.all(values.map(async (value) => {
-                        const outerText = await value.getProperty('innerText');
-                        return await outerText.jsonValue();
-                    }));
+                console.log(record)
+                await delay(500);
+            }   
 
-                    if (textValues.length !== 10) {
-                        console.log('Did not find 10 values, retrying...');
-                    } else {
-                        row.push(textValues[3], textValues[6], textValues[7], textValues[8], textValues[9]);
-                    }
+            // Works for phone/email/hours NOT street/zip
+            async function getRowValue(profileContainer, label) {
+                const selector = `//label[contains(text(), "${label}")]/following-sibling::div`;
+                const element = await profileContainer.$x(selector);
+                if (element.length > 0) {
+                    const value = await (await element[0].getProperty('textContent')).jsonValue();
+                    return value.trim();
                 }
-                
-                console.log(row)
-                await delay(5000);
-            }                                   
-
-            // Write the extracted data to the CSV file
-            csvWriter.writeRecords(rows)
-            .then(() => console.log(`***WROTE CSV for PAGE #${page_index + 1}***`));
+                return '';
+            }
+            
+            // Works for street/zip NOT phone/email/hours
+            async function getRowSpanValue(profileContainer, label) {
+                const selector = `//label[./span[contains(text(), "${label}")]]/following-sibling::div`;
+                const element = await profileContainer.$x(selector);
+                if (element.length > 0) {
+                  const value = await (await element[0].getProperty('textContent')).jsonValue();
+                  return value.trim();
+                }
+                return '';
+            }                                                            
         }
 
         await browser.close()
