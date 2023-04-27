@@ -22,7 +22,7 @@ const scraperObject = {
         }
 
         // Main Loop
-        for (var page_index = 0; page_index < 2; page_index++){ // for each page of 20 stores
+        for (var page_index = 0; page_index < 1; page_index++){ // for each page of 20 stores
             await page.bringToFront();
             console.log(`loading page ${page_index + 1}`); 
 
@@ -42,7 +42,7 @@ const scraperObject = {
                 return rowElements.map(row => {
                     const businessNameCell = row.querySelector('td:nth-child(2)');
                     const businessName = businessNameCell.querySelector('strong').innerText.trim();
-                    const dba = businessNameCell.innerText.trim().replace(businessName, '').trim();
+                    const dba = businessNameCell.innerText.trim().replace(businessName, '').replace('Trade Name:', '').trim();
                     return {
                         licenseNumber: row.querySelector('td:nth-child(1)').innerText.trim(),
                         businessName,
@@ -68,10 +68,9 @@ const scraperObject = {
                 console.log(`Navigating to the info page for ${record.businessName}...`);
                 await extraLinksPage.goto(`${record.link}`);
     
-                //console.log(`Loading additional data for ${rows[2]}...`);
-                await extraLinksPage.waitForSelector('.hd-box-container.profile');
-                await extraLinksPage.waitForSelector('h3[class="col-md-12 col-sm-12 ng-binding"]');
-                await delay(1000); // 'button[ng-click="handlePagination(true)"]'
+                await extraLinksPage.waitForFunction(
+                    'document.querySelector("body").innerText.includes("DBA")'
+                  );
                 const profileContainer = await extraLinksPage.$('.hd-box-container.profile');
                 const streetAddress = await getRowSpanValue(profileContainer, 'Street Address:');
                 const zipCode = await getRowSpanValue(profileContainer, 'ZIP Code:');
