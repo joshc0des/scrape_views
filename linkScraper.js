@@ -1,5 +1,4 @@
 const fs = require('fs');
-const createCsvWriter = require('csv-writer').createArrayCsvWriter;
 
 const scraperObject = {
 	url: 'https://omma.us.thentiacloud.net/webs/omma/register/#/business/search/all/Dispensary',
@@ -16,18 +15,15 @@ const scraperObject = {
             });
         }
 
-        const csvWriter = createCsvWriter({
-			path: 'output.csv',
-			header: ['licenseNumber', 'businessName', 'dba', 'licenseType', 'city', 'county', 'licenceExpiration', 'link', 'streetAddress', 'zipCode', 'phone', 'email', 'hours'],
-		});
-
+        const outputFile = 'output.json';
         let data = {
             "total": 0,
             "stores": []
         }
 
         // Main Loop
-        for (var page_index = 0; page_index < 1; page_index++){ // for each page of 20 stores
+        for (var page_index = 0; page_index < 2; page_index++){ // for each page of 20 stores
+            await page.bringToFront();
             console.log(`loading page ${page_index + 1}`); 
 
             // Click next page button onlyafter first loop iteration
@@ -65,8 +61,7 @@ const scraperObject = {
                 });
             });
 
-            // console.log(rows);
-
+            await extraLinksPage.bringToFront();
             console.log(`Grabbing additional info for page ${page_index + 1}`)
             // Push additional info to rows
             for (const record of rows) {
@@ -75,8 +70,8 @@ const scraperObject = {
     
                 //console.log(`Loading additional data for ${rows[2]}...`);
                 await extraLinksPage.waitForSelector('.hd-box-container.profile');
-                await extraLinksPage.waitForSelector('.col-md-8');
-                await delay(1000);
+                await extraLinksPage.waitForSelector('h3[class="col-md-12 col-sm-12 ng-binding"]');
+                await delay(1000); // 'button[ng-click="handlePagination(true)"]'
                 const profileContainer = await extraLinksPage.$('.hd-box-container.profile');
                 const streetAddress = await getRowSpanValue(profileContainer, 'Street Address:');
                 const zipCode = await getRowSpanValue(profileContainer, 'ZIP Code:');
@@ -92,6 +87,10 @@ const scraperObject = {
 
                 console.log(record)
                 await delay(500);
+
+                data.stores.push(record);
+                data.total = data.stores.length;
+                fs.writeFileSync(outputFile, JSON.stringify(data));
             }   
 
             // Works for phone/email/hours NOT street/zip
